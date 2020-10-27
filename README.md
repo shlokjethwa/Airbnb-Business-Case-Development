@@ -1,7 +1,7 @@
 # Airbnb-Business-Case-Development
 Data Analysis and created ML models forbusiness case development. Mined data of >152k values. 
 Why Austin Market?
-● Cheaper to buy properties
+● Cheaper to buy properties <br>
 ● Quicker to get building permits
 ● Good ROI for Airbnb Austin - There’s clearly a demand for entire homes and so when
 renting it on Airbnb they can bring about $2000 - $4000
