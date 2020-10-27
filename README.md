@@ -1,5 +1,5 @@
 # Airbnb-Business-Case-Development
-Data Analysis and created ML models forbusiness case development
+Data Analysis and created ML models forbusiness case development. Mined data of >152k values. 
 Why Austin Market?
 ● Cheaper to buy properties
 ● Quicker to get building permits
