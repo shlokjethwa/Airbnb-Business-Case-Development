@@ -1,0 +1,565 @@
+---
+title: "R Notebook"
+output:
+  word_document: default
+  pdf_document: default
+  html_notebook: default
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+
+#Cover Page
+
+Data Mining and Predictive Analysis :
+
+Project Title: Exploratory and Predictive Analysis of Airbnb Austin Market for finding high booking properties
+
+Market Assigned to the team: Austin
+“We, the undersigned, certify that the report submitted is our own original work, all authors participated in work in a substantive way; all authors have seen and approved the report as submitted, the text, images, illustrations, and other items included in the manuscript do not carry any infringement/ plagiarism issue upon any existing copyrighted materials. ”
+
+
+Signature 
+Names of the signed team members
+
+
+Dharkar Gauri
+
+
+Ishwar Dodamani Vishal
+
+
+Jethwa Shlok
+
+
+Joshi Jay
+
+
+Parekh Malav
+
+
+Shah Ami
+
+
+
+#Executive Summary
+
+	The project is focused on finding insights about the Airbnb Austin market for a property to become profitable to an investor. Austin is a developing market and has a lot of potential in real estate. Due to the presence of educational hubs, tourist spots, different festivals, and a growing job market, people are attracted to visit Austin. Effective analysis of this market will prove beneficial for investors as well as customers. 
+	
+	Properties in Austin are comparatively less expensive than other big cities. This implies that taking into consideration a few important aspects of the property, an investor can gain profit in no time. The data makes generalized assumptions about the majority of people. As the analysis is based on what the majority of customers prefer, investors are recommended to provide that. This analysis thereby fulfills customer expectations as well. After analyzing the Airbnb data for Austin, we came up with meaningful insights for a buyer. Investors should buy an apartment, guest house, condominium, or a guest suite which has year wide high booking rates.  Customers mainly prefer the properties having lower prices. Also, review scores are an important consideration concerning customers. Review scores are directly proportional to the booking rate. 
+	
+	From the investors’ perspective, our emphasis was not to miss high booking properties. All the models are developed with this premise. Different models encounter different business problems. The first business case suggests focusing on year wide availability and amenities to attract more customers. Secondly, super host status, neighborhood, different fees (cleaning, security),  and review scores matter utmost in price predictions and property management. Finally, people’s preference for scenic properties and different amenities affects the upgrading and renovation aspect of the estate.
+	
+
+#Research Questions
+
+**What is the best time to visit Austin?**
+Spring and fall are the best times to visit Austin. From September to November and from March to May, the temperatures are perfect for a visit to Austin. Austin is host to ACL festival and SXSW which also takes place in these months and which are most popular among people. 
+
+**What should investors focus on before purchasing the property?**
+Investors should focus on the popularity of the area where the house resides i.e to find which areas are mostly visited by the customers.
+What should be the availability of the house?
+Select a house which could be available more often (In the 30 day or 365-day window.)
+ 
+**What amenities do people expect in an Airbnb house?**
+Bathrooms, bedrooms, Leisure, Safety, Health, Kitchen are some amenities that people look for before booking an Airbnb house.
+ 
+**Which are the most popular property types which people look for on the Airbnb Austin market?**
+GuestHouse, GuestSuite, Condominium, Apartment are some of the most booked properties in Austin.
+ 
+**Are review scores related to the property bookings?**
+Yes, they are. Normally review scores of  9 or 10 are only preferred by other people before they book their property.
+ 
+**What factors must be considered before buying a property?**
+The locality of the property, availability of the property, the number of people it accommodates, the number of bathrooms, and bedrooms must be considered.
+ 
+**What factors must be considered for deciding the price of a property?**
+Pricing mostly depends on the availability period, cleaning fee, accommodation, amenities whether the host is a super host or not.
+How will the owner manage the property after the acquisition of the property?
+Better review scores, host response time, host response rate help improve management of the property.
+Will upgrades and renovations help in increasing the booking rate?
+People usually prefer Scenic views and leisure activities. Upgrading to these amenities can be really worthwhile.
+
+
+
+
+```{r}
+library("tidyverse")
+library("tidymodels")
+library("plotly")
+library("skimr")
+library("lubridate")
+library("caret")
+
+library('tsibble')
+library('lubridate')
+library('openintro')
+library('fpp3')
+library('ggplot2')
+library('dplyr')
+```
+
+```{r}
+austinMarketTrain<-read_csv('austinMarketTrainClean_v1.0.csv')
+austinMarketTrain2<-read.csv('austinMarketTrainClean_v1.0.csv')
+dfAustinClean <- read.csv('Train.csv')
+```
+
+#Modeling
+
+##Data Preparation
+
+We started off with cleaning our data, which started with by replacing empt spaces by NA, removing unwanted characters, performing data type conversion, clubbing of some variables to reduce the number of levels it had and to make more sense out of it and lastly making dummy variables for the desired variables.
+
+**Replacing empty spaces by NA**
+
+```{r}
+dfAustinClean <-
+dfAustinClean[rowSums(is.na(dfAustinClean))!=ncol(dfAustinClean), ] # first set blank to NA
+
+skim(dfAustinClean)
+```
+
+**Removing $ from cleaning_fee, security_deposit,weekly_price, monthly_price, extra_people and price and changing to numeric**
+```{r}
+dfAustinClean$cleaning_fee <- stringr::str_replace(dfAustinClean$cleaning_fee, '\\$', '')
+dfAustinClean$cleaning_fee <- as.numeric(dfAustinClean$cleaning_fee)
+
+dfAustinClean$price <- stringr::str_replace(dfAustinClean$price, '\\$', '')
+dfAustinClean$price <- stringr::str_replace(dfAustinClean$price, ',', '')
+dfAustinClean$price <- as.numeric(dfAustinClean$price)
+
+
+#dfAustinClean$price <- as.numeric(dfAustinClean$price)
+
+#dfAustinClean$price <- gsub("$", "", dfAustinClean$price)
+#dfAustinClean$price <- gsub(",", "", dfAustinClean$price)
+#dfAustinClean$price <- as.numeric(dfAustinClean$price)
+
+#typeof(dfAustinClean$price) 
+#dfAustinClean$price
+
+dfAustinClean$extra_people <- stringr::str_replace(dfAustinClean$extra_people, '\\$', '')
+dfAustinClean$extra_people <- as.numeric(dfAustinClean$extra_people)
+
+dfAustinClean$monthly_price <- stringr::str_replace(dfAustinClean$monthly_price, '\\$', '')
+dfAustinClean$monthly_price <- as.numeric(dfAustinClean$monthly_price)
+
+dfAustinClean$security_deposit <- stringr::str_replace(dfAustinClean$security_deposit, '\\$', '')
+dfAustinClean$security_deposit <- as.numeric(dfAustinClean$security_deposit)
+
+dfAustinClean$weekly_price <- stringr::str_replace(dfAustinClean$weekly_price, '\\$', '')
+dfAustinClean$weekly_price <- as.numeric(dfAustinClean$weekly_price)
+
+dfAustinClean
+
+```
+
+**Removing % from host_reponse_rate and changing to numeric**
+```{r}
+dfAustinClean$host_response_rate <- stringr::str_replace(dfAustinClean$host_response_rate, '\\%', '')
+dfAustinClean$host_response_rate <- as.numeric(dfAustinClean$host_response_rate)
+
+dfAustinClean
+
+```
+
+**Removing redundant columns state and market from dataframe**
+```{r}
+dfAustinClean$state <- NULL
+dfAustinClean$market <- NULL
+```
+
+
+```{r}
+austinMarketTrain1 <- dfAustinClean
+```
+
+**replacing the NA in host_response_rate with 0**
+```{r}
+austinMarketTrain1$host_response_rate<-austinMarketTrain1$host_response_rate %>% 
+  replace_na(0)
+```
+
+**replacing the NA in zipcode with 0**
+```{r}
+austinMarketTrain1$zipcode<-austinMarketTrain1$zipcode %>% 
+  replace_na(0)
+```
+
+**Grouping zipcodes based on their locality **
+```{r}
+Group1 <- c(78652,78701,78703,78705,78712)
+Group2 <- c(78719,78721,78722,78723)
+Group3 <- c(78717,78724,78725,78726,78727,78728,78729)
+Group4 <- c(78730,78731,78732,78733,78734,78738,78739)
+Group5 <- c(78735,78736,78737,78741,78749)
+Group6 <- c(78742,78744,78745,78747,78748,78750,78751,78752,78753,78754,78756,78757,78758,78759)
+Misc <- c(78613,78620,78650,78653,78660,78669,78746,78767,80211,78712)
+
+```
+
+```{r}
+austinMarketTrain1$category <- ifelse(austinMarketTrain1$zipcode %in% Group1, "Group 1", 
+                                ifelse(austinMarketTrain1$zipcode %in% Group2, "Group 2",
+                                ifelse(austinMarketTrain1$zipcode %in% Group3,"Group 3",
+                                ifelse(austinMarketTrain1$zipcode %in% Group4,"Group 4",
+                                ifelse(austinMarketTrain1$zipcode %in% Group5,"Group 5",
+                                ifelse(austinMarketTrain1$zipcode %in% Group6,"Group 6",
+                                       "Misc"))))))
+
+```
+
+**Grouping the Host_listings_count based on different ranges**
+
+```{r}
+Local <- seq(0, 1, by=1)
+Small <- c(2,3,4)
+Medium <- seq(5,25, by=1)
+Large <- seq(26,1000, by=1)
+Misc1<- c(1717, 1780,1826)
+
+austinMarketTrain1$host_listings_count <- ifelse(austinMarketTrain1$host_listings_count %in% Local, "Local", 
+                                ifelse(austinMarketTrain1$host_listings_count %in% Small, "Small",
+                                ifelse(austinMarketTrain1$host_listings_count %in% Medium,"Medium",
+                                ifelse(austinMarketTrain1$host_listings_count %in% Large,"Large",
+                                ifelse(austinMarketTrain1$host_listings_count %in% Misc1,"Miscellanious","Other")))))
+```
+
+```{r}
+
+Host_listin_Time_levels = c('within an hour',' within a day','within a few hours','a few days or more')
+
+#austinMarketTrain1$host_response_time <- ifelse(austinMarketTrain1$host_response_time %in% Host_listin_Time_levels, austinMarketTrain1$host_response_time,-1)
+
+```
+
+**Making dummies for host_listings_count and host_response_time**
+```{r}
+library("fastDummies")
+austinMarketTrain1 <- fastDummies::dummy_cols(austinMarketTrain1, select_columns = "host_listings_count")
+
+austinMarketTrain1 <- fastDummies::dummy_cols(austinMarketTrain1, select_columns = "host_response_time")
+
+```
+
+**Replacing NAs in host_response_rate with 0**
+```{r}
+austinMarketTrain1$host_response_rate<-austinMarketTrain1$host_response_rate %>% 
+  replace_na(0)
+```
+
+**Categorizing the host_response rate based on range of rates mentioned below:**
+*Weak: 0-50%
+*Average: 51-75%
+*Abover Average: 76-85%
+*Marvelous: above 95%
+```{r}
+weak <- seq(0, 50, by=1)
+average <- seq(51, 75, by=1)
+aboveAverage <- seq(76,95, by=1)
+marvelous<- seq(96,100, by=1)
+
+austinMarketTrain1$host_response_rate <- ifelse(austinMarketTrain1$host_response_rate %in% weak, "Weak", 
+                                ifelse(austinMarketTrain1$host_response_rate %in% average, "Average",
+                                ifelse(austinMarketTrain1$host_response_rate %in% aboveAverage,"Above Average",
+                                ifelse(austinMarketTrain1$host_response_rate %in% marvelous,"Marvelous","Other"))))
+```
+
+**Making dummies for host_response_rate, zipcodes category, bed type and room types**
+```{r}
+austinMarketTrain1 <- fastDummies::dummy_cols(austinMarketTrain1, select_columns = "host_response_rate")
+austinMarketTrain1 <- fastDummies::dummy_cols(austinMarketTrain1, select_columns = "category")
+austinMarketTrain1 <- fastDummies::dummy_cols(austinMarketTrain1, select_columns = "bed_type")
+austinMarketTrain1 <- fastDummies::dummy_cols(austinMarketTrain1, select_columns = "room_type")
+```
+
+```{r}
+austinMarketTrain2<-austinMarketTrain1
+```
+
+**Repalcing NA values in the numeric columns with mode**
+```{r}
+val <- unique(austinMarketTrain2$beds[!is.na(austinMarketTrain2$beds)])              # Values in vec_miss
+mode <- val[which.max(tabulate(match(austinMarketTrain2$beds, val)))] # Mode of vec_miss
+
+
+austinMarketTrain2$beds <- austinMarketTrain2$beds                                    # Replicate vec_miss
+austinMarketTrain2$beds[is.na(austinMarketTrain2$beds)] <- mode 
+
+
+val <- unique(austinMarketTrain2$bedrooms[!is.na(austinMarketTrain2$bedrooms)])              # Values in vec_miss
+mode <- val[which.max(tabulate(match(austinMarketTrain2$bedrooms, val)))] # Mode of vec_miss
+
+
+austinMarketTrain2$bedrooms <- austinMarketTrain2$bedrooms                                    # Replicate vec_miss
+austinMarketTrain2$bedrooms[is.na(austinMarketTrain2$bedrooms)] <- mode 
+
+val <- unique(austinMarketTrain2$bathrooms[!is.na(austinMarketTrain2$bathrooms)])              # Values in vec_miss
+mode <- val[which.max(tabulate(match(austinMarketTrain2$bathrooms, val)))] # Mode of vec_miss
+
+
+austinMarketTrain2$bathrooms <- austinMarketTrain2$bathrooms                                    # Replicate vec_miss
+austinMarketTrain2$bathrooms[is.na(austinMarketTrain2$bathrooms)] <- mode 
+
+val <- unique(austinMarketTrain2$cleaning_fee[!is.na(austinMarketTrain2$cleaning_fee)])              # Values in vec_miss
+mode <- val[which.max(tabulate(match(austinMarketTrain2$cleaning_fee, val)))] # Mode of vec_miss
+
+
+austinMarketTrain2$cleaning_fee <- austinMarketTrain2$cleaning_fee                                    # Replicate vec_miss
+austinMarketTrain2$cleaning_fee[is.na(austinMarketTrain2$cleaning_fee)] <- mode 
+
+val <- unique(austinMarketTrain2$weekly_price[!is.na(austinMarketTrain2$weekly_price)])              # Values in vec_miss
+mode <- val[which.max(tabulate(match(austinMarketTrain2$weekly_price, val)))] # Mode of vec_miss
+
+
+austinMarketTrain2$weekly_price <- austinMarketTrain2$weekly_price                                    # Replicate vec_miss
+austinMarketTrain2$weekly_price[is.na(austinMarketTrain2$weekly_price)] <- mode 
+
+val <- unique(austinMarketTrain2$security_deposit[!is.na(austinMarketTrain2$security_deposit)])              # Values in vec_miss
+mode <- val[which.max(tabulate(match(austinMarketTrain2$security_deposit, val)))] # Mode of vec_miss
+
+
+austinMarketTrain2$security_deposit <- austinMarketTrain2$security_deposit                                    # Replicate vec_miss
+austinMarketTrain2$security_deposit[is.na(austinMarketTrain2$security_deposit)] <- mode 
+
+val <- unique(austinMarketTrain2$review_scores_cleanliness[!is.na(austinMarketTrain2$review_scores_cleanliness)])              # Values in vec_miss
+mode <- val[which.max(tabulate(match(austinMarketTrain2$review_scores_cleanliness, val)))] # Mode of vec_miss
+
+
+austinMarketTrain2$review_scores_cleanliness <- austinMarketTrain2$review_scores_cleanliness                                    # Replicate vec_miss
+austinMarketTrain2$review_scores_cleanliness[is.na(austinMarketTrain2$review_scores_cleanliness)] <- mode 
+
+val <- unique(austinMarketTrain2$review_scores_checkin[!is.na(austinMarketTrain2$review_scores_checkin)])              # Values in vec_miss
+mode <- val[which.max(tabulate(match(austinMarketTrain2$review_scores_checkin, val)))] # Mode of vec_miss
+
+
+austinMarketTrain2$review_scores_checkin <- austinMarketTrain2$review_scores_checkin                                    # Replicate vec_miss
+austinMarketTrain2$review_scores_checkin[is.na(austinMarketTrain2$review_scores_checkin)] <- mode 
+
+val <- unique(austinMarketTrain2$review_scores_communication[!is.na(austinMarketTrain2$review_scores_communication)])              # Values in vec_miss
+mode <- val[which.max(tabulate(match(austinMarketTrain2$review_scores_communication, val)))] # Mode of vec_miss
+
+
+austinMarketTrain2$review_scores_communication <- austinMarketTrain2$review_scores_communication                                    # Replicate vec_miss
+austinMarketTrain2$review_scores_communication[is.na(austinMarketTrain2$review_scores_communication)] <- mode 
+
+val <- unique(austinMarketTrain2$review_scores_location[!is.na(austinMarketTrain2$review_scores_location)])              # Values in vec_miss
+mode <- val[which.max(tabulate(match(austinMarketTrain2$review_scores_location, val)))] # Mode of vec_miss
+
+
+austinMarketTrain2$review_scores_location <- austinMarketTrain2$review_scores_location                                    # Replicate vec_miss
+austinMarketTrain2$review_scores_location[is.na(austinMarketTrain2$review_scores_location)] <- mode 
+
+val <- unique(austinMarketTrain2$review_scores_rating[!is.na(austinMarketTrain2$review_scores_rating)])              # Values in vec_miss
+mode <- val[which.max(tabulate(match(austinMarketTrain2$review_scores_rating, val)))] # Mode of vec_miss
+
+
+austinMarketTrain2$review_scores_rating <- austinMarketTrain2$review_scores_rating                                    # Replicate vec_miss
+austinMarketTrain2$review_scores_rating[is.na(austinMarketTrain2$review_scores_rating)] <- mode 
+
+val <- unique(austinMarketTrain2$review_scores_value[!is.na(austinMarketTrain2$review_scores_value)])              # Values in vec_miss
+mode <- val[which.max(tabulate(match(austinMarketTrain2$review_scores_value, val)))] # Mode of vec_miss
+
+
+austinMarketTrain2$review_scores_value <- austinMarketTrain2$review_scores_value                                    # Replicate vec_miss
+austinMarketTrain2$review_scores_value[is.na(austinMarketTrain2$review_scores_value)] <- mode 
+
+val <- unique(austinMarketTrain2$host_listings_count[!is.na(austinMarketTrain2$host_listings_count)])              # Values in vec_miss
+mode <- val[which.max(tabulate(match(austinMarketTrain2$host_listings_count, val)))] # Mode of vec_miss
+
+
+austinMarketTrain2$host_listings_count <- austinMarketTrain2$host_listings_count                                    # Replicate vec_miss
+austinMarketTrain2$host_listings_count[is.na(austinMarketTrain2$host_listings_count)] <- mode 
+
+```
+
+```{r}
+austinMarketTrain1 <- austinMarketTrain2
+```
+
+```{r}
+str(austinMarketTrain1)
+```
+
+# ########################################################################################
+                                  Modeling techniques
+# ########################################################################################
+
+```{r}
+library("caret")
+#austinMarketTrain1$high_booking_rate<-as.factor(austinMarketTrain1$high_booking_rate)
+set.seed(123)
+austinCleanData <- read_csv('AustinMarketTrain.csv')
+austinMarketTrainFinal <- austinMarketTrain1 %>% sample_frac(0.7)
+austinMarketTestFinal <- dplyr::setdiff(austinMarketTrain1, austinMarketTrainFinal)
+
+df<-read.csv('AustinMarketTrain.csv')
+df1<-df
+df1$high_booking_rate<-as.factor(df1$high_booking_rate)
+
+set.seed(123)
+austinTrainSet <- df %>% sample_frac(0.70)
+austinTestSet <- dplyr::setdiff(df, austinTrainSet)
+
+set.seed(123)
+austinTrainSet_f <- df1 %>% sample_frac(0.70)
+austinTestSet_f <- dplyr::setdiff(df1, austinTrainSet_f)
+```
+
+# ################################################
+      Final Acquisition model 
+# ################################################
+
+
+```{r}
+fitBaggedTree <- train(high_booking_rate ~ is_location_exact+category+accommodates+availability_30+availability_365 + bedrooms + bathrooms, data= austinTrainSet_f, method='treebag', trControl=trainControl(method='cv', number=10))
+#The default bootstrap replications is 25. You can change it using the argument nbagg = XX
+
+#See the CV output (accuracy per pruning parameter etc.)
+fitBaggedTree$finalModel
+
+#See the variables plotted by importance (according to the bagged tree):
+plot(varImp(fitBaggedTree), top= 12)
+
+#See the variables listed by importance (according to the bagged tree)
+varImp(fitBaggedTree)$importance %>%    # Add scale=FALSE inside VarImp if you don't want to scale
+  rownames_to_column(var = "Variable") %>%
+  mutate(Importance = scales::percent(Overall/100)) %>% 
+  arrange(desc(Overall)) %>% 
+  as_tibble()
+
+#Make predictions:
+resultsBaggedTree1 <-
+  fitBaggedTree %>% 
+  predict(austinTestSet_f, type='prob') %>% 
+  bind_cols(austinTestSet_f, predictedProb=.)
+resultsBaggedTree1<- resultsBaggedTree1%>%  
+  mutate(predictedClass = as.factor(ifelse(resultsBaggedTree1$`1` > 0.35, 1, 0)))
+
+resultsBaggedTree1 %>% 
+  xtabs(~predictedClass+ high_booking_rate, .) %>% 
+  confusionMatrix(positive = '1') #%>% 
+```
+
+
+
+# ###################################################################
+              Pricing and Management
+# ###################################################################
+
+
+Bagged Decision Tree (Finalised)
+# ####################################################
+        Final Management Model
+# ####################################################
+
+```{r}
+
+fitBaggedTree <- train(high_booking_rate ~ review_scores_checkin+review_scores_cleanliness+review_scores_communication+review_scores_location+review_scores_rating+review_scores_value+host_is_superhost+host_response_rate+cancellation_policy+instant_bookable+security_deposit+host_listings_count+host_response_time+host_identity_verified+Bathroom+Leisure+Other+health, data= austinTrainSet_f, method='treebag', trControl=trainControl(method='cv', number=10))
+#The default bootstrap replications is 25. You can change it using the argument nbagg = XX
+
+#See the CV output (accuracy per pruning parameter etc.)
+fitBaggedTree$finalModel
+
+
+#See the variables plotted by importance (according to the bagged tree):
+plot(varImp(fitBaggedTree), top=20)
+
+#See the variables listed by importance (according to the bagged tree)
+varImp(fitBaggedTree)$importance %>%    # Add scale=FALSE inside VarImp if you don't want to scale
+  rownames_to_column(var = "Variable") %>%
+  mutate(Importance = scales::percent(Overall/100)) %>% 
+  arrange(desc(Overall)) %>% 
+  as_tibble()
+
+#Make predictions:
+resultsBaggedTree <-
+  fitBaggedTree %>% 
+  predict(austinTestSet, type='prob') %>% 
+  bind_cols(austinTestSet, predictedProb=.)
+
+  resultsBaggedTree <- resultsBaggedTree%>%  
+    mutate(predictedClass = as.factor(ifelse(resultsBaggedTree$`1` > 0.35, 1, 0)))
+
+resultsBaggedTree %>% 
+  xtabs(~predictedClass+ high_booking_rate, .) %>% 
+  confusionMatrix(positive = '1') #%>% 
+```
+
+```{r}
+
+```
+
+
+# ####################################################
+                  Final Pricing Model
+# ####################################################
+
+
+```{r}
+fitBaggedTree <- train(high_booking_rate ~accommodates+bathrooms+bedrooms+availability_90+availability_365+cleaning_fee+host_is_superhost+room_type+category+host_listings_count+Bathroom+Leisure+Other+Scenic+health, data= austinTrainSet_f, method='treebag', trControl=trainControl(method='cv', number=10))
+#The default bootstrap replications is 25. You can change it using the argument nbagg = XX
+
+#See the CV output (accuracy per pruning parameter etc.)
+fitBaggedTree$finalModel
+
+#See the variables plotted by importance (according to the bagged tree):
+plot(varImp(fitBaggedTree), top=20)
+
+#See the variables listed by importance (according to the bagged tree)
+varImp(fitBaggedTree)$importance %>%    # Add scale=FALSE inside VarImp if you don't want to scale
+  rownames_to_column(var = "Variable") %>%
+  mutate(Importance = scales::percent(Overall/100)) %>% 
+  arrange(desc(Overall)) %>% 
+  as_tibble()
+
+#Make predictions:
+resultsBaggedTree <-
+  fitBaggedTree %>% 
+  predict(austinTestSet, type='prob') %>% 
+  bind_cols(austinTestSet, predictedProb=.)%>%
+  mutate(predictedClass = as.factor(ifelse(resultsBaggedTree$`1` > 0.35, 1, 0)))
+
+resultsBaggedTree %>% 
+  xtabs(~predictedClass+ high_booking_rate, .) %>% 
+  confusionMatrix(positive = '1') #%>% 
+```
+
+
+
+# ################################################################
+                  Upgrades and Renovations
+# ################################################################
+
+KNN
+
+```{r}
+resultsfitInvestorProperty1 <- train(as.factor(high_booking_rate) ~  bathrooms + bedrooms + beds  + instant_bookable  + room_type  + Bathroom + Kitchen + Leisure + Other  + Safety + Scenic,data=austinTrainSet_f, trControl=trainControl(method='cv', number=100), preProcess = c("center", "scale"), tuneLength = 3,method='knn')
+```
+
+
+```{r}
+resultsKNN <- 
+  resultsfitInvestorProperty1 %>%
+  predict(austinTestSet_f, type='prob') %>%
+  bind_cols(austinTestSet_f, predictedProb=.)
+
+#plot(varImp(resultsfitInvestorProperty1), top=10)
+
+#See the variables listed by importance (according to the bagged tree)
+#varImp(resultsKNN)$importance %>%    # Add scale=FALSE inside VarImp if you don't want to scale
+  #rownames_to_column(var = "Variable") %>%
+  #mutate(Importance = scales::percent(Overall/100)) %>% 
+  #arrange(desc(Overall)) %>% 
+  #as_tibble()
+
+resultsKNN<- resultsKNN%>%
+  mutate(predictedClass = as.factor(ifelse(resultsKNN$`1` > 0.35, 1, 0)))
+
+resultsKNN %>% 
+  xtabs(~predictedClass+high_booking_rate, .) %>% 
+  confusionMatrix(positive = '1')
+```
